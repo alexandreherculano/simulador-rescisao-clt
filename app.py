@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import date
-from calculos import calcular
+from calculos import calcular, fgts_historico
 st.set_page_config(page_title='Simulador de Rescisão CLT',page_icon='💰',layout='wide')
 st.title('Simulador de Rescisão CLT')
 st.caption('Demissão sem justa causa • estimativa de caixa disponível • tabelas 2026')
@@ -19,28 +19,31 @@ with a:
     dep=st.number_input('Dependentes para IRRF',min_value=0,value=0)
 with b:
     st.subheader('FGTS')
-    fgts=dinheiro('Saldo atual da conta do empregador atual')
+    metodo=st.radio('Como calcular o FGTS do vínculo atual?',['Estimativa pela admissão e demissão','Informar saldo real'])
+    automatico=metodo.startswith('Estimativa')
+    fgts=0.0 if automatico else dinheiro('Saldo real do vínculo atual antes dos depósitos finais')
+    if automatico:
+        st.caption('Estimativa de 8% sobre salários e 13º de anos anteriores, usando o salário informado durante todo o vínculo. Não inclui correção monetária, férias gozadas e seu terço, variações salariais ou saques.')
     modalidade=st.radio('Modalidade vigente',['Saque-rescisão','Saque-aniversário'])
-    usar_base=st.checkbox('Conheço a base para fins rescisórios')
+    usar_base=not automatico and st.checkbox('Conheço a base para fins rescisórios')
     base=dinheiro('Base para multa antes dos depósitos finais') if usar_base else None
-    if not usar_base: st.caption('A multa será aproximada usando o saldo atual; saques anteriores podem alterar a base real.')
-    anteriores=dinheiro('Saldo total de empregos anteriores')
-    liberado=dinheiro('Parte dos saldos anteriores já liberada para saque', 'Não inclua valores ainda bloqueados ou sujeitos a condição futura.')
-    pendentes=dinheiro('Depósitos anteriores ainda não recolhidos')
-    depositado=dinheiro('Depósitos das verbas finais já incluídos no saldo informado','Evita dupla contagem; se a base da multa tiver composição diferente, revise manualmente.')
+    if not usar_base and not automatico: st.caption('A multa será aproximada usando o saldo atual; saques anteriores podem alterar a base real.')
+    pendentes=0.0 if automatico else dinheiro('Depósitos anteriores ainda não recolhidos')
+    depositado=0.0 if automatico else dinheiro('Depósitos das verbas finais já incluídos no saldo informado','Evita dupla contagem; se a base da multa tiver composição diferente, revise manualmente.')
 with st.expander('Adiantamentos e outros ajustes'):
     adiant=dinheiro('13º já recebido (valor bruto adiantado)')
     extras=dinheiro('Outros créditos salariais tributáveis (horas extras etc.)')
     descontos=dinheiro('Outros descontos líquidos / adiantamentos')
 if salario<=0: st.info('Informe o salário para calcular.'); st.stop()
-if liberado>anteriores: st.error('O saldo anterior liberado não pode superar o saldo anterior total.'); st.stop()
-try: r=calcular(adm,saida,salario,aviso,ferias,fgts,base,anteriores,modalidade,liberado,dep,adiant,extras,descontos,filhos,dobro,pendentes,depositado)
+try:
+    if automatico: fgts=fgts_historico(adm,saida,salario)
+    r=calcular(adm,saida,salario,aviso,ferias,fgts,base,modalidade,dep,adiant,extras,descontos,filhos,dobro,pendentes,depositado)
 except ValueError as e: st.error(str(e)); st.stop()
 st.divider()
 st.metric('TOTAL LÍQUIDO DISPONÍVEL ESTIMADO',moeda(r['total']))
-c=st.columns(4)
-for col,label,key in zip(c,['Acerto líquido','Multa de 40%','FGTS atual sacável','FGTS anterior liberado'],['liquido','multa','saque','anterior']): col.metric(label,moeda(r[key]))
-st.caption(f"FGTS não disponível: {moeda(r['retido'])} • Depósitos finais estimados: {moeda(r['novos'])} • Aviso indenizado: {r['dias_aviso']} dias • Fim projetado: {r['fim']:%d/%m/%Y}")
+c=st.columns(3)
+for col,label,key in zip(c,['Acerto líquido','Multa de 40%','FGTS do vínculo atual sacável'],['liquido','multa','saque']): col.metric(label,moeda(r[key]))
+st.caption(f"FGTS anterior aos depósitos finais: {moeda(fgts)} • FGTS não disponível: {moeda(r['retido'])} • Depósitos finais estimados: {moeda(r['novos'])} • Aviso indenizado: {r['dias_aviso']} dias • Fim projetado: {r['fim']:%d/%m/%Y}")
 with st.expander('Memória de cálculo',expanded=True):
     c,d=st.columns(2)
     with c:
