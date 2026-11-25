@@ -13,7 +13,7 @@ Acesse https://share.streamlit.io/ e selecione o repositório, branch main e app
 - Contrato CLT padrão mensal, FGTS 8%, dispensa sem justa causa. Último dia efetivamente trabalhado, com projeção do aviso indenizado. No aviso trabalhado, parcela acima de 30 dias estimada como indenizada.
 - Férias simples restantes e em dobro informadas separadamente; avos proporcionais calculados automaticamente.
 - IRRF/INSS de 2026 separados para salário e 13º. Não cobre múltiplas folhas ou antecipações complexas.
-- FGTS anterior só entra no total se já disponível por outro motivo. Base da multa anterior aos depósitos finais; saldo como aproximação se desconhecida. Conferir base oficial e depósitos já recolhidos. Não cobre saldo bloqueado, empréstimos ou regimes especiais.
+- Apenas o vínculo atual é considerado. Modo automático estima depósitos de 8% sobre salários anteriores ao mês da saída e 13º de anos anteriores; o motor soma os depósitos rescisórios. Assume salário constante, sem atualização monetária, saques, férias gozadas ou remuneração variável. Modo manual usa saldo real e base oficial antes dos depósitos finais; informe depósitos já recolhidos para evitar duplicidade. Não cobre bloqueios ou regimes especiais.
 - Atualizar tabelas anualmente; datas fora de 2026 bloqueadas. Não inclui seguro-desemprego.
 
 ## Testes
