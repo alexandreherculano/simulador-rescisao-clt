@@ -21,7 +21,23 @@ def ferias(admissao,fim):
     delta=relativedelta(fim+timedelta(days=1),admissao)
     return delta.years,delta.months+(delta.days>=15)
 
-def calcular(admissao,saida,salario,aviso,dias_ferias,fgts,base_fgts,anteriores,modalidade,ant_liberado=0,dependentes=0,adiantamento=0,extras=0,descontos=0,filhos=0,dias_dobro=0,depositos_pendentes=0,ja_depositado=0):
+def fgts_historico(admissao, saida, salario):
+    """Depósitos estimados anteriores ao mês da saída e ao 13º rescisório."""
+    from datetime import date
+    if saida < admissao: raise ValueError('Data de saída anterior à admissão.')
+    mes = admissao.replace(day=1)
+    limite = saida.replace(day=1)
+    total = 0.0
+    while mes < limite:
+        ultimo = mes.replace(day=monthrange(mes.year, mes.month)[1])
+        dias = 30 if admissao <= mes else min(30, (ultimo-admissao).days+1)
+        total += salario*dias/30*.08
+        mes += relativedelta(months=1)
+    for ano in range(admissao.year, saida.year):
+        total += salario*avos_13(admissao,date(ano,12,31),ano)/12*.08
+    return round(total,2)
+
+def calcular(admissao,saida,salario,aviso,dias_ferias,fgts,base_fgts,modalidade,dependentes=0,adiantamento=0,extras=0,descontos=0,filhos=0,dias_dobro=0,depositos_pendentes=0,ja_depositado=0):
     if saida<admissao: raise ValueError('Data de saída anterior à admissão.')
     anos=relativedelta(saida,admissao).years
     prazo=min(90,30+3*anos)
@@ -50,5 +66,4 @@ def calcular(admissao,saida,salario,aviso,dias_ferias,fgts,base_fgts,anteriores,
     base_nova=max(0,round(.08*(saldo+extras+decimo_real)+depositos_pendentes-ja_depositado,2))
     multa=round(.4*((fgts if base_fgts is None else base_fgts)+base_nova),2)
     saque=round(fgts+novos,2) if modalidade=='Saque-rescisão' else 0
-    anterior=min(anteriores,ant_liberado)
-    return dict(proventos=p,descontos=d,bruto=bruto,liquido=liquido,novos=novos,multa=multa,saque=saque,anterior=anterior,total=round(liquido+saque+multa+anterior,2),retido=round(anteriores-anterior+(0 if modalidade=='Saque-rescisão' else fgts+novos),2),fim=fim,avos=avos,prazo=prazo,dias_aviso=dias_aviso)
+    return dict(proventos=p,descontos=d,bruto=bruto,liquido=liquido,novos=novos,multa=multa,saque=saque,total=round(liquido+saque+multa,2),retido=round(0 if modalidade=='Saque-rescisão' else fgts+novos,2),fim=fim,avos=avos,prazo=prazo,dias_aviso=dias_aviso)
